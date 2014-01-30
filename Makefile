@@ -1,6 +1,9 @@
 EXE=life
 CC=g++
 CFLAGS=-Wall --std=c++11 `sdl2-config --cflags --libs`
+
+.PHONY: all debug
+
 all:
 	g++ main.cpp ${CFLAGS} -O3 -o $(EXE)
 debug:
