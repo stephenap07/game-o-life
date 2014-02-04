@@ -6,7 +6,7 @@
 #include <Gwen/Gwen.h>
 #include <Gwen/Skins/Simple.h>
 #include <Gwen/Skins/TexturedBase.h>
-#include <Gwen/UnitTest/UnitTest.h>
+#include <LifeGUI.h>
 #include <Gwen/Input/SDL2.h>
 #include <Gwen/Renderers/SDL2.h>
 
@@ -289,7 +289,7 @@ int main(int argc, char *argv[]) {
     pCanvas->SetDrawBackground(false);
     pCanvas->SetBackgroundColor(Gwen::Color(150, 170, 170, 255));
 
-    UnitTest* pUnit = new UnitTest(pCanvas);
+    LifeGUI* pUnit = new LifeGUI(pCanvas);
     pUnit->SetPos(10, 10);
 
     // This is a 'streaming texture' since it gets updated frequently
