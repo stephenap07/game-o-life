@@ -4,3 +4,4 @@ life
 *.o
 *.a
 *.life
+.DS_Store
