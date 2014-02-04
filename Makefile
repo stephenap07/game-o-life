@@ -1,8 +1,11 @@
 EXE=life
 CC=g++
-CFLAGS=-Wall --std=c++11 `sdl2-config --cflags --libs`
+INCLUDES=-IGWork/gwen/include/
+LDFLAGS=-LGWork/gwen/lib -LGWork/gwen/lib/macosx/ -LGWork/gwen/lib/macosx/gmake/
+LIBS= -lgwen_static -lGWEN-Renderer-SDL2 -lunittest -framework Cocoa -framework IOKit -framework OpenGL -framework ForceFeedback -framework CoreAudio -framework AudioUnit -framework AudioToolbox -framework Carbon -liconv  -lSDL2 -lSDL2_image -lSDL2_ttf 
+CFLAGS=-Wall --std=c++11 -stdlib=libc++ ${INCLUDES} $(sdl2-config --cflags) ${LDFLAGS} ${LIBS}
 
-.PHONY: all debug
+.PHONY: all debug run
 
 all:
 	g++ main.cpp ${CFLAGS} -O3 -o $(EXE)

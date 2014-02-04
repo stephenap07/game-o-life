@@ -3,10 +3,18 @@
 #include <string>
 #include <array>
 
-#include "SDL2/SDL.h"
+#include <Gwen/Gwen.h>
+#include <Gwen/Skins/Simple.h>
+#include <Gwen/Skins/TexturedBase.h>
+#include <Gwen/UnitTest/UnitTest.h>
+#include <Gwen/Input/SDL2.h>
+#include <Gwen/Renderers/SDL2.h>
 
-#define SCREEN_WIDTH  640
-#define SCREEN_HEIGHT 480
+#include "SDL2/SDL.h"
+#include "SDL2/SDL_ttf.h"
+
+#define SCREEN_WIDTH  1024
+#define SCREEN_HEIGHT 768
 #define SCREEN_DEPTH  32
 
 // Endianess check for SDL RGBA surfaces
@@ -238,6 +246,12 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    if (TTF_Init() != 0) {
+        std::cerr << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return 1;
+    }
+
     SDL_Window *win = nullptr;
     win = SDL_CreateWindow("Game-o-Life", SDL_WINDOWPOS_CENTERED,
                            SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH,
@@ -257,6 +271,26 @@ int main(int argc, char *argv[]) {
         std::cerr << SDL_GetError() << std::endl;
         return 1;
     }
+
+    Gwen::Renderer::SDL2 *pRenderer = new Gwen::Renderer::SDL2(win, renderer);
+
+    // Create a GWEN skin
+    Gwen::Skin::TexturedBase skin(pRenderer);
+    skin.SetRender(pRenderer);
+    skin.Init("DefaultSkin.png");
+    
+    // Note, you can get fonts that cover many languages/locales to do Chinese,
+    //       Arabic, Korean, etc. e.g. "Arial Unicode" (but it's 23MB!).
+    skin.SetDefaultFont("OpenSans.ttf", 11);
+    
+    // Create a Canvas (it's root, on which all other GWEN panels are created)
+    Gwen::Controls::Canvas* pCanvas = new Gwen::Controls::Canvas(&skin);
+    pCanvas->SetSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+    pCanvas->SetDrawBackground(false);
+    pCanvas->SetBackgroundColor(Gwen::Color(150, 170, 170, 255));
+
+    UnitTest* pUnit = new UnitTest(pCanvas);
+    pUnit->SetPos(10, 10);
 
     // This is a 'streaming texture' since it gets updated frequently
     cell_tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
@@ -304,6 +338,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    Gwen::Input::SDL2 GwenInput;
+    GwenInput.Initialize(pCanvas);
+
     while (!quit) {
         delta = SDL_GetTicks() - last_tick;
         last_tick = SDL_GetTicks();
@@ -338,6 +375,8 @@ int main(int argc, char *argv[]) {
                 case SDL_QUIT:
                     return(0);
             }
+
+            GwenInput.ProcessEvent(&event);
         }
 
         SDL_LockTexture(cell_tex, nullptr, &cell_surface->pixels, &cell_surface->pitch);
@@ -352,10 +391,13 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        SDL_UnlockTexture(cell_tex);
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, cell_tex, nullptr, nullptr);
         SDL_RenderCopy(renderer, grid_tex, nullptr, nullptr);
+
+        pRenderer->BeginContext(NULL);
+        pCanvas->RenderCanvas();
+
         SDL_RenderPresent(renderer);
     }
 
