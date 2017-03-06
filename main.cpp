@@ -484,8 +484,6 @@ private:
     return true;
   }
 
-  bool initializeCells() { return true; }
-
   void createDeltaAndIncrementTicks() {
     delta = SDL_GetTicks() - lastTick;
     lastTick = SDL_GetTicks();
