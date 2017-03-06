@@ -3,24 +3,18 @@ ifndef verbose
 endif
 
 EXE=life
-CC=g++
 CXX=g++
-INCLUDES=-IGWork/gwen/include/ -Iinclude
-LDFLAGS=-LGWork/gwen/lib -LGWork/gwen/lib/macosx/ -LGWork/gwen/lib/macosx/gmake/ -L./
-LIBS= -lgwen_static -lGWEN-Renderer-SDL2 -lSDL2 -lSDL2_image -lSDL2_ttf -llifegui
-CFLAGS=-Wall --std=c++11 -stdlib=libc++ ${INCLUDES} $(sdl2-config --cflags) ${LDFLAGS} ${LIBS}
-CFLAGS += -msse -O2 -ffast-math
+INCLUDES=`sdl2-config --cflags`
+LIBS=`sdl2-config --libs` -lSDL2_image -lSDL2_ttf
+CFLAGS=-g -Wall --std=c++11 -stdlib=libc++
+CFLAGS+=-msse -O2 -ffast-math
 
-.PHONY: all debug run gui
+.PHONY: all debug run
 
-all: gui
-	g++ main.cpp ${CFLAGS} -O3 -o $(EXE)
-debug: gui
-	g++ main.cpp ${CFLAGS} -g -o $(EXE)
-
-gui: ${OBJECTS}
-	@echo "==== Building Life Gui library ===="
-	make --no-print-directory -C . -f LifeGUI.make
+all:
+	$(CXX) main.cpp ${CFLAGS} ${INCLUDES} ${LIBS} -O3 -o $(EXE)
+debug:
+	$(CXX) main.cpp ${CFLAGS} ${INCLUDES} ${LIBS} -g -o $(EXE)
 
 run:
 	./$(EXE)
