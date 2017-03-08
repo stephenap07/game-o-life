@@ -1,6 +1,7 @@
-#include <array>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -23,11 +24,6 @@
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 768
 #define SCREEN_DEPTH 32
-
-// The size in pixels of a single cell
-const unsigned int MAP_SIZE = 8;
-const unsigned int MAP_WIDTH = SCREEN_WIDTH / MAP_SIZE;
-const unsigned int MAP_HEIGHT = SCREEN_HEIGHT / MAP_SIZE;
 
 Uint8 *getFirstByteFromSurfacePixels(SDL_Surface *surface, int x, int y) {
   return (Uint8 *)surface->pixels + y * surface->pitch +
@@ -139,7 +135,6 @@ private:
 
 public:
   CellMap(int w, int h) : width(w), height(h), cells(w * h) {}
-  CellMap() : width(MAP_WIDTH), height(MAP_HEIGHT), cells(MAP_WIDTH * MAP_HEIGHT) {}
 
   void applyRules() {
     performOneGeneration();
@@ -153,7 +148,7 @@ public:
     return true;
   }
 
-  SDL_Texture* createCellTexture(SDL_Renderer *renderer) {
+  SDL_Texture *createCellTexture(SDL_Renderer *renderer) {
     return SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                              SDL_TEXTUREACCESS_STREAMING, width, height);
   }
@@ -174,7 +169,6 @@ public:
   }
 
 private:
-
   void assignPixelToSurfaceForEveryLiveCell(SDL_Surface *surface) {
     for (unsigned int y = 0; y < height; y++) {
       for (unsigned int x = 0; x < width; x++) {
@@ -216,7 +210,7 @@ private:
     if (y < (height - 1)) {
       if (getCell(x, y + 1).active)
         neighbors++;
-      if (x < (width- 1))
+      if (x < (width - 1))
         if (getCell(x + 1, y + 1).active)
           neighbors++;
       if (x > 0)
@@ -231,7 +225,7 @@ private:
     if (y > 0) {
       if (getCell(x, y - 1).active)
         neighbors++;
-      if (x < (width- 1))
+      if (x < (width - 1))
         if (getCell(x + 1, y - 1).active)
           neighbors++;
       if (x > 0)
@@ -358,17 +352,23 @@ private:
 
 class GridRenderer {
 private:
+  int mapSize;
+
   SDL_Texture *gridTex = nullptr;
   SDL_Surface *gridSurface = nullptr;
 
 public:
+  GridRenderer(int sz) : mapSize(sz) {}
+
   ~GridRenderer() {
     SDL_DestroyTexture(gridTex);
     SDL_FreeSurface(gridSurface);
   }
 
   void render(SDL_Renderer *renderer) {
-    SDL_RenderCopy(renderer, gridTex, nullptr, nullptr);
+    if (mapSize > 1) {
+      SDL_RenderCopy(renderer, gridTex, nullptr, nullptr);
+    }
   }
 
   bool createSurfaceAndTexture(SDL_Renderer *renderer, std::size_t width,
@@ -392,7 +392,7 @@ private:
   }
 
   bool createGridTexture(SDL_Renderer *renderer) {
-    GridDrawer gridDrawer(gridSurface, 0xFFA9A9A9, MAP_SIZE);
+    GridDrawer gridDrawer(gridSurface, 0xFFA9A9A9, mapSize);
     gridTex = gridDrawer.drawToTexture(renderer);
     if (!gridTex) {
       std::cerr << SDL_GetError() << std::endl;
@@ -408,6 +408,8 @@ private:
   GridRenderer gridRenderer;
 
 public:
+  CellAndGridRenderer(int gridMapSize) : gridRenderer(gridMapSize) {}
+
   bool createSurfacesAndTexturesForCellsAndGrid(SDL_Renderer *renderer,
                                                 CellMap &cellMap) {
     if (!cellRenderer.createSurfaceAndTexture(renderer, cellMap))
@@ -426,8 +428,8 @@ public:
 
 class GameOfLife {
 private:
-  CellMap cellMap;
-  CellAndGridRenderer cellAndGridRenderer;
+  std::unique_ptr<CellMap> cellMap;
+  std::unique_ptr<CellAndGridRenderer> cellAndGridRenderer;
 
   SDL_Window *win = nullptr;
   SDL_Renderer *renderer = nullptr;
@@ -503,7 +505,7 @@ private:
       case SDL_KEYDOWN:
         switch (event.key.keysym.sym) {
         case SDLK_n:
-          cellMap.applyRules();
+          cellMap->applyRules();
           break;
         }
         break;
@@ -516,10 +518,10 @@ private:
   bool initialize() {
     if (!initializeRenderSystem())
       return false;
-    if (!cellMap.clearCellsAndReadCellsFromFile("seed"))
+    if (!cellMap->clearCellsAndReadCellsFromFile("seed"))
       return false;
-    cellAndGridRenderer.createSurfacesAndTexturesForCellsAndGrid(renderer,
-                                                                 cellMap);
+    cellAndGridRenderer->createSurfacesAndTexturesForCellsAndGrid(renderer,
+                                                                  *cellMap);
     return true;
   }
 
@@ -528,28 +530,38 @@ private:
       pollForEvents();
       createDeltaAndIncrementTicks();
       SDL_RenderClear(renderer);
-      cellAndGridRenderer.drawCellsAndGrid(renderer, cellMap);
+      cellAndGridRenderer->drawCellsAndGrid(renderer, *cellMap);
       SDL_RenderPresent(renderer);
     }
   }
 
-  void destroy() {
+public:
+  GameOfLife(int argc, char *argv[]) {
+    int mapSize = 4;
+
+    if (argc > 1) {
+      std::string firstArg = argv[1];
+      std::istringstream buf(firstArg);
+      buf >> mapSize;
+    }
+
+    cellMap = std::make_unique<CellMap>(SCREEN_WIDTH / mapSize,
+                                        SCREEN_HEIGHT / mapSize);
+    cellAndGridRenderer = std::make_unique<CellAndGridRenderer>(mapSize);
+  }
+
+  ~GameOfLife() {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(win);
     SDL_Quit();
   }
 
-public:
-
-  GameOfLife() : cellMap(MAP_WIDTH, MAP_HEIGHT) {}
-
   int runGame() {
     if (!initialize())
       return 1;
     mainLoop();
-    destroy();
     return 0;
   }
 };
 
-int main(int argc, char *argv[]) { return GameOfLife().runGame(); }
+int main(int argc, char *argv[]) { return GameOfLife(argc, argv).runGame(); }
